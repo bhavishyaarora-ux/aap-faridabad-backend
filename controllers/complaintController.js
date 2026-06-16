@@ -1,0 +1,83 @@
+const Complaint = require("../models/Complaint");
+
+/**
+ * @desc    Submit a new civic complaint (Citizen facing)
+ * @route   POST /api/complaints
+ * @access  Public (Citizens don't need to log in to report issues)
+ */
+exports.submitComplaint = async (req, res) => {
+  try {
+    const { imageUrl, category, description, lat, lng } = req.body;
+
+    // 1. Validate incoming data
+    if (!imageUrl || !category || !lat || !lng) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Please provide image, category, and GPS coordinates",
+        });
+    }
+
+    let parsedAddress = "Unknown Location";
+    let detectedSector = "Unassigned";
+
+    // 2. REVERSE GEOCODING: Turn GPS into a real Faridabad address
+    // We use OpenStreetMap's free Nominatim API. No API key required!
+    try {
+      console.log(`Translating GPS: Lat ${lat}, Lng ${lng}...`);
+      const geoResponse = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
+        { headers: { "User-Agent": "AAP-Faridabad-Civic-App" } }, // Nominatim requires a user-agent
+      );
+
+      const geoData = await geoResponse.json();
+
+      if (geoData && geoData.address) {
+        // Construct a readable address from the API response
+        parsedAddress = geoData.display_name;
+        // Try to extract the neighborhood, suburb, or road for the sector name
+        detectedSector =
+          geoData.address.neighbourhood ||
+          geoData.address.suburb ||
+          geoData.address.residential ||
+          "Open Pool";
+      }
+    } catch (geoError) {
+      console.log(
+        "Geocoding failed, but saving complaint anyway:",
+        geoError.message,
+      );
+    }
+
+    // 3. Save the complaint to the Database
+    const newComplaint = await Complaint.create({
+      imageUrl,
+      category,
+      description: description || "No description provided",
+      location: {
+        type: "Point",
+        coordinates: [lng, lat], // IMPORTANT: MongoDB requires Longitude first, then Latitude!
+      },
+      parsedAddress,
+      detectedSector,
+      status: "Pending",
+      assignedWorker: null, // Remains null until a worker claims it from the open pool
+    });
+
+    // 4. Send success response back to the citizen's phone
+    return res.status(201).json({
+      success: true,
+      message: "Complaint submitted successfully into the open pool!",
+      data: newComplaint,
+    });
+  } catch (error) {
+    console.error("Complaint Submission Error:", error);
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Server Error: Could not submit complaint",
+      });
+  }
+};
