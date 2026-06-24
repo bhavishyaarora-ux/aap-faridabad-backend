@@ -5,6 +5,7 @@ const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const complaintRoutes = require("./routes/complaintRoutes");
 const workerRoutes = require("./routes/workerRoutes");
+const movementRoutes = require("./routes/movementRoutes");
 
 const app = express();
 
@@ -19,6 +20,8 @@ app.use(express.json()); // Essential for parsing raw JSON payloads
 app.use("/api/auth", authRoutes);
 app.use("/api/complaints", complaintRoutes);
 app.use("/api/workers", workerRoutes);
+app.use("/api/movement", movementRoutes);
+app.use("/api/auth", authRoutes);
 
 
 // Catch-All Error Handler Middleware

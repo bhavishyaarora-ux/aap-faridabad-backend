@@ -7,7 +7,8 @@ const Complaint = require("../models/Complaint");
  */
 exports.submitComplaint = async (req, res) => {
   try {
-    const { imageUrl, category, description, lat, lng } = req.body;
+    const imageUrl = req.file ? req.file.path : null;
+    const {category, description, lat, lng } = req.body;
 
     // 1. Validate incoming data
     if (!imageUrl || !category || !lat || !lng) {
@@ -79,5 +80,43 @@ exports.submitComplaint = async (req, res) => {
         success: false,
         message: "Server Error: Could not submit complaint",
       });
+  }
+};
+exports.getAllComplaints = async (req, res) => {
+  try {
+    const complaints = await Complaint.find().sort({ createdAt: -1 }); // Newest first
+    return res
+      .status(200)
+      .json({ success: true, count: complaints.length, data: complaints });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ success: false, message: "Server Error fetching complaints" });
+  }
+};
+
+exports.boostComplaint = async (req, res) => {
+  try {
+    const complaintId = req.params.id;
+
+    // Use $inc to increment the boost count by 1 atomically
+    const updatedComplaint = await Complaint.findByIdAndUpdate(
+      complaintId,
+      { $inc: { boosts: 1 } },
+      { new: true }, // Return the updated document
+    );
+
+    if (!updatedComplaint) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Complaint not found" });
+    }
+
+    return res.status(200).json({ success: true, data: updatedComplaint });
+  } catch (error) {
+    console.error("Boost Error:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Server Error boosting complaint" });
   }
 };

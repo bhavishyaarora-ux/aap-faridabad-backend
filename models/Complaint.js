@@ -27,6 +27,10 @@ const ComplaintSchema = new mongoose.Schema(
       ref: "User",
       default: null,
     },
+    boosts: {
+      type: Number,
+      default: 0,
+    },
   },
   { timestamps: true },
 );

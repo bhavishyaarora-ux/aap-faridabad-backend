@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken");
+const Citizen = require("../models/Citizen"); 
 
 exports.protect = async (req, res, next) => {
   let token;
@@ -31,5 +32,40 @@ exports.protect = async (req, res, next) => {
     return res
       .status(401)
       .json({ success: false, message: "Token failed or expired" });
+  }
+};
+
+exports.protectCitizen = async (req, res, next) => {
+  let token;
+
+  // 1. Check if the request has an authorization header
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer")
+  ) {
+    try {
+      // Extract token from "Bearer <token>"
+      token = req.headers.authorization.split(" ")[1];
+
+      // 2. Verify the token
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+      // 3. Fetch the citizen from the database and attach it to req.user
+      req.user = await Citizen.findById(decoded.id).select("-password");
+
+      // 4. Let them pass!
+      next();
+    } catch (error) {
+      console.error("Not authorized, token failed");
+      return res
+        .status(401)
+        .json({ success: false, message: "Not authorized, token failed" });
+    }
+  }
+
+  if (!token) {
+    return res
+      .status(401)
+      .json({ success: false, message: "Not authorized, no token provided" });
   }
 };
