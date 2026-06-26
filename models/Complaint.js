@@ -31,6 +31,16 @@ const ComplaintSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    citizenEmail: {
+      type: String,
+      required: true,
+      default: "anonymous@citizen.com", // Fallback safety
+    },
+    citizenId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Citizen", // Links to your Citizen auth model
+      required: false,
+    },
   },
   { timestamps: true },
 );

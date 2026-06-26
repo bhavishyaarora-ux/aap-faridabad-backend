@@ -64,6 +64,12 @@ exports.submitComplaint = async (req, res) => {
       detectedSector,
       status: "Pending",
       assignedWorker: null, // Remains null until a worker claims it from the open pool
+      citizenEmail: req.citizen
+        ? req.citizen.email
+        : req.user
+          ? req.user.email
+          : "anonymous@citizen.com",
+      citizenId: req.citizen ? req.citizen._id : req.user ? req.user._id : null,
     });
 
     // 4. Send success response back to the citizen's phone
