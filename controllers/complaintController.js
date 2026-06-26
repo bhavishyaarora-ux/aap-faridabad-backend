@@ -105,17 +105,51 @@ exports.boostComplaint = async (req, res) => {
   try {
     const complaintId = req.params.id;
 
-    // Use $inc to increment the boost count by 1 atomically
-    const updatedComplaint = await Complaint.findByIdAndUpdate(
-      complaintId,
-      { $inc: { boosts: 1 } },
-      { new: true }, // Return the updated document
-    );
+    // Securely get the ID of the citizen making the request
+    const citizenId = req.citizen
+      ? req.citizen._id
+      : req.user
+        ? req.user._id
+        : null;
 
-    if (!updatedComplaint) {
+    if (!citizenId) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Unauthorized: Please log in." });
+    }
+
+    const complaint = await Complaint.findById(complaintId);
+    if (!complaint) {
       return res
         .status(404)
         .json({ success: false, message: "Complaint not found" });
+    }
+
+    // Check if this specific citizen has already boosted this complaint
+    const alreadyBoosted = complaint.boostedBy.includes(citizenId);
+
+    let updatedComplaint;
+
+    if (alreadyBoosted) {
+      // UN-BOOST: They already boosted it, so remove their ID and subtract 1
+      updatedComplaint = await Complaint.findByIdAndUpdate(
+        complaintId,
+        {
+          $pull: { boostedBy: citizenId }, // Removes ID from array
+          $inc: { boosts: -1 }, // Decreases total count
+        },
+        { new: true },
+      );
+    } else {
+      // BOOST: Add their ID to the array and add 1
+      updatedComplaint = await Complaint.findByIdAndUpdate(
+        complaintId,
+        {
+          $addToSet: { boostedBy: citizenId }, // Adds ID to array safely
+          $inc: { boosts: 1 }, // Increases total count
+        },
+        { new: true },
+      );
     }
 
     return res.status(200).json({ success: true, data: updatedComplaint });

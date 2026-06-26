@@ -31,6 +31,12 @@ const ComplaintSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    boostedBy: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Citizen",
+      },
+    ],
     citizenEmail: {
       type: String,
       required: true,
